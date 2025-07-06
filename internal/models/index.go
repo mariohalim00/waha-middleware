@@ -11,7 +11,7 @@ type SendTextDetails struct {
 	ReplyTo                string `json:"reply_to"`
 	LinkPreview            bool   `json:"linkPreview"`
 	LinkPreviewHighQuality bool   `json:"linkPreviewHighQuality"`
-	Text                   string `json:"string"`
+	Text                   string `json:"text"`
 }
 type Pic struct {
 	FormattedPhoneNumber string `json:"formattedPhoneNumber"`

@@ -56,6 +56,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 
 		//	send message
 		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
+		msg = strings.ReplaceAll(msg, `\n`, "\n")
 		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, msg)
 		if err != nil {
 			failedJob = append(failedJob, models.JobResponse{
