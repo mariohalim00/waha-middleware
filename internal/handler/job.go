@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -23,9 +22,6 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 	var jobList []models.Job
 	var failedJob []models.JobResponse
 	err := json.NewDecoder(r.Body).Decode(&jobList)
-
-	//TODO: REMOVE DEBUG
-	fmt.Println("body", jobList)
 
 	if err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)

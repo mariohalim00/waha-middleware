@@ -10,6 +10,11 @@ import (
 var API_KEY = os.Getenv("API_KEY")
 
 func Post(payload []byte, url string) error {
+
+	//TODO: REMOVE DEBUG
+	fmt.Println("[http/POST] url: ", url)
+	fmt.Println("[http/POST] payload: ", payload)
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 
 	if err != nil {
