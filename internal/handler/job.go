@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -13,14 +14,13 @@ import (
 
 var TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
 
-func ProcessJob(w http.ResponseWriter, r *http.Request) {
+func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var jobList []models.Job
-	var failedJob []models.JobResponse
 	err := json.NewDecoder(r.Body).Decode(&jobList)
 
 	if err != nil {
@@ -28,13 +28,26 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go procesJobBackground(jobList)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte(`{
+	"status": "accepted",
+	"message": "Job is being processed in the background. Results will be sent to your webhook."
+}`))
+}
+
+func procesJobBackground(jobList []models.Job) {
+	var failedJobs []models.JobResponse
+
 	length := len(jobList)
 	for idx, job := range jobList {
 		//	start typing
-		err = service.StartTyping(job.Pic.Session, job.Customer.ChatId)
+		err := service.StartTyping(job.Pic.Session, job.Customer.ChatId)
 		if err != nil {
 			// http.Error(w, "Error sending typing event", http.StatusConflict)
-			failedJob = append(failedJob, models.JobResponse{
+			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
@@ -46,7 +59,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 		err = service.StopTyping(job.Pic.Session, job.Customer.ChatId)
 		if err != nil {
 			// http.Error(w, "Error stopping typing event", http.StatusConflict)
-			failedJob = append(failedJob, models.JobResponse{
+			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
@@ -59,7 +72,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 		msg = strings.ReplaceAll(msg, `\n`, "\n")
 		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, msg)
 		if err != nil {
-			failedJob = append(failedJob, models.JobResponse{
+			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
@@ -72,6 +85,12 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 		//	return list of failed jobs
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(failedJob)
+	body, err := json.Marshal(failedJobs)
+
+	if err != nil {
+		fmt.Println("Error converting to JSON: ", err)
+	}
+
+	util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+
 }
