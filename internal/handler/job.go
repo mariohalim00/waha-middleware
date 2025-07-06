@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -23,6 +24,9 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 	var failedJob []models.JobResponse
 	err := json.NewDecoder(r.Body).Decode(&jobList)
 
+	//TODO: REMOVE DEBUG
+	fmt.Println("body", jobList)
+
 	if err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -38,6 +42,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
+			continue
 		}
 		time.Sleep(util.GenerateRandomDuration(30))
 
@@ -49,6 +54,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
+			continue
 		}
 		time.Sleep(util.GenerateRandomDuration(30))
 
@@ -60,6 +66,7 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 			})
+			continue
 		}
 		// wait few secs
 		if idx < length {
