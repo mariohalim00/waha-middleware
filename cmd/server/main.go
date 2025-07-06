@@ -13,6 +13,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ping", handler.Ping)
+	mux.HandleFunc("/api/process-job", handler.ProcessJob)
 
 	err := godotenv.Load()
 	if err != nil {
