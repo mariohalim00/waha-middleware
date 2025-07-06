@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/util"
@@ -35,7 +34,7 @@ func StartTyping(session, chatId string) error {
 	err = util.Post(payload, url)
 
 	if err != nil {
-		log.Fatal("Error executing request", err)
+		fmt.Println("Error executing request:", err)
 		return err
 	}
 
@@ -66,7 +65,7 @@ func StopTyping(session, chatId string) error {
 	err = util.Post(payload, url)
 
 	if err != nil {
-		log.Fatal("Error executing request", err)
+		fmt.Println("Error executing request:", err)
 		return err
 	}
 
@@ -101,7 +100,8 @@ func SendMessage(session, chatId, text string) error {
 	err = util.Post(payload, url)
 
 	if err != nil {
-		log.Fatal("Error executing request", err)
+		fmt.Println("Error executing request:", err)
+
 	}
 
 	return nil
