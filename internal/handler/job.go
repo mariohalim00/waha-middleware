@@ -3,13 +3,15 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
 	"waha-job-processing/internal/util"
 )
 
-const TEXT_TEMPLATE = "TEST TEXT"
+var TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
 
 func ProcessJob(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -50,7 +52,8 @@ func ProcessJob(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(util.GenerateRandomDuration(30))
 
 		//	send message
-		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, TEXT_TEMPLATE)
+		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
+		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, msg)
 		if err != nil {
 			failedJob = append(failedJob, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
