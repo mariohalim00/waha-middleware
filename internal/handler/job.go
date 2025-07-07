@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -12,7 +13,14 @@ import (
 	"waha-job-processing/internal/util"
 )
 
-var TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
+var TEXT_TEMPLATE string
+
+func init() {
+	TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
+	if TEXT_TEMPLATE == "" {
+		panic("TEXT_BLAST_TEMPLATE environment variable is not set")
+	}
+}
 
 func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -28,7 +36,14 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go procesJobBackground(jobList)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered in job processor: %v", r)
+			}
+		}()
+		processJobBackground(jobList)
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
@@ -38,7 +53,7 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 }`))
 }
 
-func procesJobBackground(jobList []models.Job) {
+func processJobBackground(jobList []models.Job) {
 	var failedJobs []models.JobResponse
 
 	length := len(jobList)
@@ -79,7 +94,7 @@ func procesJobBackground(jobList []models.Job) {
 			continue
 		}
 		// wait few secs
-		if idx < length {
+		if idx < length-1 {
 			time.Sleep(util.GenerateRandomDuration(30))
 		}
 		//	return list of failed jobs
@@ -88,9 +103,23 @@ func procesJobBackground(jobList []models.Job) {
 	body, err := json.Marshal(failedJobs)
 
 	if err != nil {
-		fmt.Println("Error converting to JSON: ", err)
+		log.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
 	}
 
-	util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+	err = callWebhook(body)
+	if err != nil {
+		log.Printf("Error when callling webhook: %+v\n", err)
 
+	}
+
+}
+
+func callWebhook(body []byte) error {
+	err := util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+	if err != nil {
+		fmt.Print("Failed to call webhook")
+		return err
+	}
+
+	return nil
 }

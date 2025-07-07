@@ -4,34 +4,52 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
-func Post(payload []byte, url string) error {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+// Helper function to check for successful status codes
+func isSuccessfulStatusCode(statusCode int) bool {
+	return statusCode >= 200 && statusCode <= 299
+}
 
+// Post sends a POST request with the provided payload to the specified URL.
+func Post(payload []byte, url string) error {
+	// Create HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
-		fmt.Println("Error creating HTTP request:", err)
+		log.Printf("Error creating HTTP request: %v", err)
 		return err
 	}
 
+	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", os.Getenv("API_KEY"))
 
-	client := &http.Client{}
-
-	resp, err := client.Do(req)
-
-	if err != nil {
-		fmt.Println("Error processing HTTP Request", err)
-		return err
+	// HTTP Client with timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 10 seconds timeout
 	}
 
+	// Execute the request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error processing HTTP request: %v", err)
+		return err
+	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		body, _ := io.ReadAll(resp.Body)
+	// Check for successful response status code
+	if !isSuccessfulStatusCode(resp.StatusCode) {
+		// Read and log the response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("Failed to read error response body: %v", err)
+			return fmt.Errorf("HTTP error: %s", resp.Status)
+		}
+		log.Printf("Error Response: %s", string(body))
 		return fmt.Errorf("HTTP error: %s\nBody: %s", resp.Status, string(body))
 	}
 
