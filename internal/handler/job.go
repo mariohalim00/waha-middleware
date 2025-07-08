@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -115,9 +114,19 @@ func processJobBackground(jobList []models.Job) {
 }
 
 func callWebhook(body []byte) error {
-	err := util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+	var err error
+	MAX_RETRY := 3
+	for i := range MAX_RETRY {
+		err = util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+		if err == nil {
+			break
+		}
+		if i < MAX_RETRY {
+			log.Printf("Failed to call webhook, attempt %v/%v", i, MAX_RETRY)
+		}
+	}
+
 	if err != nil {
-		fmt.Print("Failed to call webhook")
 		return err
 	}
 
