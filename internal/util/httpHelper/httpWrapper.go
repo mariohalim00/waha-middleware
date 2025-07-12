@@ -1,4 +1,4 @@
-package util
+package httpHelper
 
 import (
 	"bytes"

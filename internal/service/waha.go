@@ -6,6 +6,7 @@ import (
 	"os"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/util"
+	"waha-job-processing/internal/util/httpHelper"
 )
 
 var BASE_URL = os.Getenv("WAHA_URL")
@@ -31,7 +32,7 @@ func StartTyping(session, chatId string) error {
 
 	url := BASE_URL + "/api/startTyping"
 
-	err = util.Post(payload, url)
+	err = httpHelper.Post(payload, url)
 
 	if err != nil {
 		fmt.Println("Error executing request:", err)
@@ -62,7 +63,7 @@ func StopTyping(session, chatId string) error {
 
 	url := BASE_URL + "/api/stopTyping"
 
-	err = util.Post(payload, url)
+	err = httpHelper.Post(payload, url)
 
 	if err != nil {
 		fmt.Println("Error executing request:", err)
@@ -97,7 +98,7 @@ func SendMessage(session, chatId, text string) error {
 
 	url := BASE_URL + "/api/sendText"
 
-	err = util.Post(payload, url)
+	err = httpHelper.Post(payload, url)
 
 	if err != nil {
 		fmt.Println("Error executing request:", err)

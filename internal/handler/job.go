@@ -10,6 +10,7 @@ import (
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
 	"waha-job-processing/internal/util"
+	"waha-job-processing/internal/util/httpHelper"
 )
 
 var TEXT_TEMPLATE string
@@ -117,7 +118,7 @@ func callWebhook(body []byte) error {
 	var err error
 	MAX_RETRY := 3
 	for i := range MAX_RETRY {
-		err = util.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+		err = httpHelper.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
 		if err == nil {
 			break
 		}
