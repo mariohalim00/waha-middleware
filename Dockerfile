@@ -5,6 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -o server ./cmd/server
+RUN goose -dir ./internal/database/migrations postgres "host=localhost user=postgres password=postgres dbname=waha-middleware sslmode=disable" up
 
 FROM alpine:latest
 
