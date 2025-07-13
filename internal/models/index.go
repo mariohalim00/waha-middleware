@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type ChatDetails struct {
 	Session string `json:"session"`
 	ChatId  string `json:"chatId"`
@@ -35,4 +37,10 @@ type Job struct {
 type JobResponse struct {
 	CustomerNumber string `json:"customerNumber"`
 	Name           string `json:"name"`
+}
+
+type PromoToken struct {
+	UserName  string    `json:"userName"`
+	PromoCode string    `json:"promoCOde"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
