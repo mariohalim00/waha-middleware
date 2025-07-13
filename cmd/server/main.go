@@ -10,16 +10,17 @@ import (
 )
 
 func main() {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/ping", handler.Ping)
-	mux.HandleFunc("POST /api/process-job", handler.ProcessJobHandler)
-	mux.HandleFunc("POST /api/get-data", handler.Ping)
 
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/ping", handler.Ping)
+	mux.HandleFunc("POST /api/process-job", handler.ProcessJobHandler)
+	mux.HandleFunc("POST /api/get-data", handler.Ping)
 
 	fmt.Println("🚀 Server is running at http://localhost:8080")
 

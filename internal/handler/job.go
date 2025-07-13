@@ -25,17 +25,18 @@ var WEBFORM_URL string
 func init() {
 	TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
 	PROMO_CODE = os.Getenv("PROMO_CODE")
-	if TEXT_TEMPLATE == "" {
-		panic("TEXT_BLAST_TEMPLATE environment variable is not set")
-	}
+	WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
+	// if TEXT_TEMPLATE == "" {
+	// 	panic("TEXT_BLAST_TEMPLATE environment variable is not set")
+	// }
 
-	if PROMO_CODE == "" {
-		panic("PROMO_CODE not set")
-	}
+	// if PROMO_CODE == "" {
+	// 	panic("PROMO_CODE not set")
+	// }
 
-	if WEBFORM_URL == "" {
-		panic("WEBFORM_URL not set")
-	}
+	// if WEBFORM_URL == "" {
+	// 	panic("WEBFORM_URL not set")
+	// }
 }
 
 func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
