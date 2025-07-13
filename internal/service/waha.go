@@ -10,6 +10,7 @@ import (
 )
 
 var BASE_URL = os.Getenv("WAHA_URL")
+var WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
 
 func StartTyping(session, chatId string) error {
 	err := util.ValidateWahaInputParams(session, chatId)

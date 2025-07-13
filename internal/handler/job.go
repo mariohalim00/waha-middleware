@@ -1,24 +1,40 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+	"waha-job-processing/internal/database/db"
+	"waha-job-processing/internal/database/repository"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
 	"waha-job-processing/internal/util"
 	"waha-job-processing/internal/util/httpHelper"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var TEXT_TEMPLATE string
+var PROMO_CODE string
+var WEBFORM_URL string
 
 func init() {
 	TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
+	PROMO_CODE = os.Getenv("PROMO_CODE")
 	if TEXT_TEMPLATE == "" {
 		panic("TEXT_BLAST_TEMPLATE environment variable is not set")
+	}
+
+	if PROMO_CODE == "" {
+		panic("PROMO_CODE not set")
+	}
+
+	if WEBFORM_URL == "" {
+		panic("WEBFORM_URL not set")
 	}
 }
 
@@ -83,8 +99,17 @@ func processJobBackground(jobList []models.Job) {
 		time.Sleep(util.GenerateRandomDuration(30))
 
 		//	send message
+		url, err := generateWebFormUrl(job)
+		if err != nil {
+			log.Printf("failed to generate url, skipping")
+			failedJobs = append(failedJobs, models.JobResponse{
+				CustomerNumber: job.Customer.FormattedPhoneNumber,
+				Name:           job.Customer.Name,
+			})
+			continue
+		}
 		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
-		msg = strings.ReplaceAll(msg, `\n`, "\n")
+		msg = strings.ReplaceAll(msg, `\n`, "\n"+url)
 		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, msg)
 		if err != nil {
 			failedJobs = append(failedJobs, models.JobResponse{
@@ -108,8 +133,7 @@ func processJobBackground(jobList []models.Job) {
 
 	err = callWebhook(body)
 	if err != nil {
-		log.Printf("Error when callling webhook: %+v\n", err)
-
+		log.Printf("Error when calling webhook: %+v\n", err)
 	}
 
 }
@@ -132,4 +156,54 @@ func callWebhook(body []byte) error {
 	}
 
 	return nil
+}
+
+func trackDistributedPromo(signature, userName string, expiryDate time.Time) (repository.PromoTracker, error) {
+	ctx := context.Background()
+	conn := db.New(ctx)
+	defer conn.Close(ctx)
+
+	param := repository.CreateTrackedPromoParams{
+		HashedString: signature,
+		ExpiredAt: pgtype.Timestamptz{
+			Time: expiryDate,
+		},
+		UserName: userName,
+	}
+
+	query := repository.New(conn)
+
+	trackedPromo, err := query.CreateTrackedPromo(ctx, param)
+	if err != nil {
+		log.Printf("Failed to crate tracked promo record")
+		return repository.PromoTracker{}, err
+	}
+
+	log.Printf("Created tracked promo %v\n", trackedPromo)
+	return trackedPromo, nil
+}
+
+func generateWebFormUrl(jobData models.Job) (string, error) {
+	currDate := time.Now()
+	expiryDate := currDate.AddDate(0, 0, 7)
+	var promoToken = models.PromoToken{
+		UserName:  jobData.Customer.Name,
+		ExpiresAt: expiryDate,
+		PromoCode: PROMO_CODE,
+	}
+
+	signature, err := service.BuildSignature(promoToken, string(rune(currDate.Unix())))
+
+	if err != nil {
+		return "", err
+	}
+
+	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
+	_, err = trackDistributedPromo(signature, jobData.Customer.Name, expiryDate)
+
+	if err != nil {
+		log.Printf("Error inserting %v", err)
+	}
+
+	return signedUrl, nil
 }
