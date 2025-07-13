@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -56,7 +56,7 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("Recovered in job processor: %v", r)
+				fmt.Printf("Recovered in job processor: %v", r)
 			}
 		}()
 		processJobBackground(jobList)
@@ -102,7 +102,7 @@ func processJobBackground(jobList []models.Job) {
 		//	send message
 		url, err := generateWebFormUrl(job)
 		if err != nil {
-			log.Printf("failed to generate url, skipping")
+			fmt.Printf("failed to generate url, skipping")
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
@@ -129,12 +129,12 @@ func processJobBackground(jobList []models.Job) {
 	body, err := json.Marshal(failedJobs)
 
 	if err != nil {
-		log.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
+		fmt.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
 	}
 
 	err = callWebhook(body)
 	if err != nil {
-		log.Printf("Error when calling webhook: %+v\n", err)
+		fmt.Printf("Error when calling webhook: %+v\n", err)
 	}
 
 }
@@ -148,7 +148,7 @@ func callWebhook(body []byte) error {
 			break
 		}
 		if i < MAX_RETRY {
-			log.Printf("Failed to call webhook, attempt %v/%v", i, MAX_RETRY)
+			fmt.Printf("Failed to call webhook, attempt %v/%v", i, MAX_RETRY)
 		}
 	}
 
@@ -176,11 +176,11 @@ func trackDistributedPromo(signature, userName string, expiryDate time.Time) (re
 
 	trackedPromo, err := query.CreateTrackedPromo(ctx, param)
 	if err != nil {
-		log.Printf("Failed to crate tracked promo record")
+		fmt.Printf("Failed to crate tracked promo record")
 		return repository.PromoTracker{}, err
 	}
 
-	log.Printf("Created tracked promo %v\n", trackedPromo)
+	fmt.Printf("Created tracked promo %v\n", trackedPromo)
 	return trackedPromo, nil
 }
 
@@ -203,7 +203,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	_, err = trackDistributedPromo(signature, jobData.Customer.Name, expiryDate)
 
 	if err != nil {
-		log.Printf("Error inserting %v", err)
+		fmt.Printf("Error inserting %v", err)
 	}
 
 	return signedUrl, nil
