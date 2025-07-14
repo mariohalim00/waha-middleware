@@ -20,7 +20,8 @@ func main() {
 
 	mux.HandleFunc("/ping", handler.Ping)
 	mux.HandleFunc("POST /api/process-job", handler.ProcessJobHandler)
-	mux.HandleFunc("POST /api/get-data", handler.Ping)
+	mux.HandleFunc("GET /api/tracked-promo/{hash}", handler.GetTrackedPromos)
+	mux.HandleFunc("POST /api/tracked-promo/{hash}/claim", handler.ClaimTrackedPromo)
 
 	fmt.Println("🚀 Server is running at http://localhost:8080")
 

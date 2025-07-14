@@ -2,6 +2,7 @@ package httpHelper
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -54,4 +55,24 @@ func Post(payload []byte, url string) error {
 	}
 
 	return nil
+}
+
+type HttpError struct {
+	Status     string `json:"status"`
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+}
+
+func ReturnHttpError(w http.ResponseWriter, message string, statusCode int) {
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	response := HttpError{
+		Status:     http.StatusText(statusCode),
+		StatusCode: statusCode,
+		Message:    message,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode error response: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
