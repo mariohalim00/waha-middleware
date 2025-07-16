@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -65,7 +66,8 @@ func processJobBackground(jobList []models.Job) {
 	length := len(jobList)
 	for idx, job := range jobList {
 		//	start typing
-		err := service.StartTyping(job.Pic.Session, job.Customer.ChatId)
+		fmt.Println("Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session)
+		err := service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
 		if err != nil {
 			// httpHelper.ReturnHttpError(w, "Error sending typing event", http.StatusConflict)
 			failedJobs = append(failedJobs, models.JobResponse{
@@ -77,7 +79,7 @@ func processJobBackground(jobList []models.Job) {
 		time.Sleep(util.GenerateRandomDuration(30))
 
 		//	stop typing
-		err = service.StopTyping(job.Pic.Session, job.Customer.ChatId)
+		err = service.StopTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
 		if err != nil {
 			// httpHelper.ReturnHttpError(w, "Error stopping typing event", http.StatusConflict)
 			failedJobs = append(failedJobs, models.JobResponse{
@@ -100,7 +102,7 @@ func processJobBackground(jobList []models.Job) {
 		}
 		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
 		msg = strings.ReplaceAll(msg, `\n`, "\n"+url)
-		err = service.SendMessage(job.Pic.Session, job.Customer.ChatId, msg)
+		err = service.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)
 		if err != nil {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,

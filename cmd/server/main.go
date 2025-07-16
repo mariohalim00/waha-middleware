@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"waha-job-processing/internal/handler"
@@ -23,7 +22,7 @@ func main() {
 	mux.HandleFunc("GET /api/tracked-promo/{hash}", handler.GetTrackedPromos)
 	mux.HandleFunc("POST /api/tracked-promo/{hash}/claim", handler.ClaimTrackedPromo)
 
-	fmt.Println("🚀 Server is running at http://localhost:8080")
+	log.Println("🚀 Server is running at http://localhost:8080")
 
 	err = http.ListenAndServe(":8080", mux)
 	if err != nil {

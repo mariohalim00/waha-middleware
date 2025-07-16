@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"waha-job-processing/internal/database/db"
 	"waha-job-processing/internal/database/repository"
@@ -22,7 +22,7 @@ func GetTrackedPromos(w http.ResponseWriter, r *http.Request) {
 
 	sluggedHash := r.PathValue("hash")
 
-	fmt.Println("Fetching tracked promo for hash:", sluggedHash)
+	log.Println("Fetching tracked promo for hash:", sluggedHash)
 	promos, err := q.GetOneTrackedPromo(ctx, sluggedHash)
 	if err != nil {
 		httpHelper.ReturnHttpError(w, "Failed to retrieve tracked promos", http.StatusInternalServerError)
@@ -62,7 +62,7 @@ func ClaimTrackedPromo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Claiming tracked promo for hash:", sluggedHash)
+	log.Println("Claiming tracked promo for hash:", sluggedHash)
 
 	param := repository.UpdateTrackedPromoParams{
 		HashedString: sluggedHash,

@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/util"
@@ -16,7 +16,7 @@ func StartTyping(session, chatId string) error {
 	err := util.ValidateWahaInputParams(session, chatId)
 
 	if err != nil {
-		fmt.Println("Error: start typing validation", err)
+		log.Println("Error: start typing validation", err)
 		return err
 	}
 
@@ -27,7 +27,7 @@ func StartTyping(session, chatId string) error {
 
 	payload, err := json.Marshal(chatDetails)
 	if err != nil {
-		fmt.Println("Error trying to convert payload to JSON")
+		log.Println("Error trying to convert payload to JSON")
 		return err
 	}
 
@@ -36,7 +36,7 @@ func StartTyping(session, chatId string) error {
 	err = httpHelper.Post(payload, url)
 
 	if err != nil {
-		fmt.Println("Error executing request:", err)
+		log.Println("Error executing request:", err)
 		return err
 	}
 
@@ -47,7 +47,7 @@ func StopTyping(session, chatId string) error {
 	err := util.ValidateWahaInputParams(session, chatId)
 
 	if err != nil {
-		fmt.Println("Error: start typing validation", err)
+		log.Println("Error: start typing validation", err)
 		return err
 	}
 
@@ -58,7 +58,7 @@ func StopTyping(session, chatId string) error {
 
 	payload, err := json.Marshal(chatDetails)
 	if err != nil {
-		fmt.Println("Error trying to convert payload to JSON")
+		log.Println("Error trying to convert payload to JSON")
 		return err
 	}
 
@@ -67,7 +67,7 @@ func StopTyping(session, chatId string) error {
 	err = httpHelper.Post(payload, url)
 
 	if err != nil {
-		fmt.Println("Error executing request:", err)
+		log.Println("Error executing request:", err)
 		return err
 	}
 
@@ -78,7 +78,7 @@ func SendMessage(session, chatId, text string) error {
 	err := util.ValidateWahaInputParams(session, chatId)
 
 	if err != nil {
-		fmt.Println("Error: start typing validation", err)
+		log.Println("Error: start typing validation", err)
 		return err
 	}
 
@@ -93,7 +93,7 @@ func SendMessage(session, chatId, text string) error {
 
 	payload, err := json.Marshal(chatDetails)
 	if err != nil {
-		fmt.Println("Error trying to convert payload to JSON")
+		log.Println("Error trying to convert payload to JSON")
 		return err
 	}
 
@@ -102,7 +102,7 @@ func SendMessage(session, chatId, text string) error {
 	err = httpHelper.Post(payload, url)
 
 	if err != nil {
-		fmt.Println("Error executing request:", err)
+		log.Println("Error executing request:", err)
 
 	}
 

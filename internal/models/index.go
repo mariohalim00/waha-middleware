@@ -25,7 +25,7 @@ type Customer struct {
 	FormattedPhoneNumber string `json:"formattedPhoneNumber"`
 	Name                 string `json:"name"`
 	IsInternal           bool   `json:"isInternal"`
-	ChatId               string `json:"chatId"`
+	// ChatId               string `json:"chatId"`
 }
 
 type Job struct {
