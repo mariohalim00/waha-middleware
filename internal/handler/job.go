@@ -17,6 +17,7 @@ import (
 	"waha-job-processing/internal/util/httpHelper"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/joho/godotenv"
 )
 
 var TEXT_TEMPLATE string
@@ -24,10 +25,13 @@ var PROMO_CODE string
 var WEBFORM_URL string
 
 func init() {
+	godotenv.Load()
 	TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
 	PROMO_CODE = os.Getenv("PROMO_CODE")
 	WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
 }
+
+var jobProcessing = make(map[string]bool)
 
 func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -43,11 +47,20 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create a unique key for this job batch (could be improved with a real idempotency key)
+	jobKey := fmt.Sprintf("%v", jobList)
+	if jobProcessing[jobKey] {
+		httpHelper.ReturnHttpError(w, "Job is already being processed", http.StatusConflict)
+		return
+	}
+	jobProcessing[jobKey] = true
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Printf("Recovered in job processor: %v", r)
 			}
+			delete(jobProcessing, jobKey)
 		}()
 		processJobBackground(jobList)
 	}()
@@ -62,11 +75,11 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 
 func processJobBackground(jobList []models.Job) {
 	var failedJobs []models.JobResponse
-
 	length := len(jobList)
+
 	for idx, job := range jobList {
 		//	start typing
-		fmt.Println("Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session)
+		log.Println("Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session)
 		err := service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
 		if err != nil {
 			// httpHelper.ReturnHttpError(w, "Error sending typing event", http.StatusConflict)
@@ -101,7 +114,8 @@ func processJobBackground(jobList []models.Job) {
 			continue
 		}
 		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
-		msg = strings.ReplaceAll(msg, `\n`, "\n"+url)
+		msg = strings.ReplaceAll(msg, `\n`, "\n")
+		msg = msg + "\n" + url
 		err = service.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)
 		if err != nil {
 			failedJobs = append(failedJobs, models.JobResponse{
@@ -110,6 +124,11 @@ func processJobBackground(jobList []models.Job) {
 			})
 			continue
 		}
+
+		//DEBUG
+		// fmt.Println("Message sent to:", job.Customer.FormattedPhoneNumber, "with URL:", url)
+		// fmt.Println("Message content:", msg)
+
 		// wait few secs
 		if idx < length-1 {
 			time.Sleep(util.GenerateRandomDuration(30))
