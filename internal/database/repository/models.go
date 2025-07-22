@@ -15,4 +15,14 @@ type PromoTracker struct {
 	CreatedAt    pgtype.Timestamptz
 	Claimed      bool
 	UserName     string
+	UpdatedAt    pgtype.Timestamptz
+	Voucher      pgtype.Text
+	ClaimedAt    pgtype.Timestamptz
+}
+
+type Voucher struct {
+	ID     int64
+	Type   string
+	Amount float64
+	Name   string
 }

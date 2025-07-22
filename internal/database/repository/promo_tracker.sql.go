@@ -12,19 +12,25 @@ import (
 )
 
 const createTrackedPromo = `-- name: CreateTrackedPromo :one
-INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name) 
-VALUES($1, $2, now(), false, $3)
-RETURNING id, hashed_string, expired_at, created_at, claimed, user_name
+INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name, voucher) 
+VALUES($1, $2, now(), false, $3, $4)
+RETURNING id, hashed_string, expired_at, created_at, claimed, user_name, updated_at, voucher, claimed_at
 `
 
 type CreateTrackedPromoParams struct {
 	HashedString string
 	ExpiredAt    pgtype.Timestamptz
 	UserName     string
+	Voucher      pgtype.Text
 }
 
 func (q *Queries) CreateTrackedPromo(ctx context.Context, arg CreateTrackedPromoParams) (PromoTracker, error) {
-	row := q.db.QueryRow(ctx, createTrackedPromo, arg.HashedString, arg.ExpiredAt, arg.UserName)
+	row := q.db.QueryRow(ctx, createTrackedPromo,
+		arg.HashedString,
+		arg.ExpiredAt,
+		arg.UserName,
+		arg.Voucher,
+	)
 	var i PromoTracker
 	err := row.Scan(
 		&i.ID,
@@ -33,12 +39,15 @@ func (q *Queries) CreateTrackedPromo(ctx context.Context, arg CreateTrackedPromo
 		&i.CreatedAt,
 		&i.Claimed,
 		&i.UserName,
+		&i.UpdatedAt,
+		&i.Voucher,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
 
 const getAllTrackedPromos = `-- name: GetAllTrackedPromos :many
-SELECT id, hashed_string, expired_at, created_at, claimed, user_name FROM "promo_tracker"
+SELECT id, hashed_string, expired_at, created_at, claimed, user_name, updated_at, voucher, claimed_at FROM "promo_tracker"
 ORDER BY id DESC
 `
 
@@ -58,6 +67,9 @@ func (q *Queries) GetAllTrackedPromos(ctx context.Context) ([]PromoTracker, erro
 			&i.CreatedAt,
 			&i.Claimed,
 			&i.UserName,
+			&i.UpdatedAt,
+			&i.Voucher,
+			&i.ClaimedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -70,7 +82,7 @@ func (q *Queries) GetAllTrackedPromos(ctx context.Context) ([]PromoTracker, erro
 }
 
 const getOneTrackedPromo = `-- name: GetOneTrackedPromo :one
-SELECT id, hashed_string, expired_at, created_at, claimed, user_name FROM "promo_tracker"
+SELECT id, hashed_string, expired_at, created_at, claimed, user_name, updated_at, voucher, claimed_at FROM "promo_tracker"
 WHERE "hashed_string" = $1
 `
 
@@ -84,15 +96,18 @@ func (q *Queries) GetOneTrackedPromo(ctx context.Context, hashedString string) (
 		&i.CreatedAt,
 		&i.Claimed,
 		&i.UserName,
+		&i.UpdatedAt,
+		&i.Voucher,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
 
 const updateTrackedPromo = `-- name: UpdateTrackedPromo :one
 UPDATE "promo_tracker"
-SET claimed = $2
+SET claimed = $2, claimed_at = now()
 WHERE "hashed_string" = $1
-RETURNING id, hashed_string, expired_at, created_at, claimed, user_name
+RETURNING id, hashed_string, expired_at, created_at, claimed, user_name, updated_at, voucher, claimed_at
 `
 
 type UpdateTrackedPromoParams struct {
@@ -110,6 +125,9 @@ func (q *Queries) UpdateTrackedPromo(ctx context.Context, arg UpdateTrackedPromo
 		&i.CreatedAt,
 		&i.Claimed,
 		&i.UserName,
+		&i.UpdatedAt,
+		&i.Voucher,
+		&i.ClaimedAt,
 	)
 	return i, err
 }

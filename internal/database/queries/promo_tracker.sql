@@ -7,12 +7,12 @@ SELECT * FROM "promo_tracker"
 WHERE "hashed_string" = $1;
 
 -- name: CreateTrackedPromo :one
-INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name) 
-VALUES($1, $2, now(), false, $3)
+INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name, voucher) 
+VALUES($1, $2, now(), false, $3, $4)
 RETURNING *;
 
 -- name: UpdateTrackedPromo :one
 UPDATE "promo_tracker"
-SET claimed = $2
+SET claimed = $2, claimed_at = now()
 WHERE "hashed_string" = $1
 RETURNING *;
