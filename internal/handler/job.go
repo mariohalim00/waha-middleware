@@ -125,10 +125,6 @@ func processJobBackground(jobList []models.Job) {
 			continue
 		}
 
-		//DEBUG
-		// fmt.Println("Message sent to:", job.Customer.FormattedPhoneNumber, "with URL:", url)
-		// fmt.Println("Message content:", msg)
-
 		// wait few secs
 		if idx < length-1 {
 			time.Sleep(util.GenerateRandomDuration(30))
@@ -153,7 +149,9 @@ func callWebhook(body []byte) error {
 	var err error
 	MAX_RETRY := 3
 	for i := range MAX_RETRY {
-		err = httpHelper.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"))
+		err = httpHelper.Post(body, os.Getenv("BLASTER_WEBHOOK_URL"), httpHelper.HttpHeader{
+			"Content-Type": "application/json",
+		})
 		if err == nil {
 			break
 		}
@@ -169,7 +167,7 @@ func callWebhook(body []byte) error {
 	return nil
 }
 
-func trackDistributedPromo(signature, userName string, expiryDate time.Time) (repository.PromoTracker, error) {
+func trackDistributedPromo(signature, userName, voucher string, expiryDate time.Time) (repository.PromoTracker, error) {
 	ctx := context.Background()
 	conn := db.New(ctx)
 	defer conn.Close(ctx)
@@ -181,6 +179,10 @@ func trackDistributedPromo(signature, userName string, expiryDate time.Time) (re
 			Valid: true,
 		},
 		UserName: userName,
+		Voucher: pgtype.Text{
+			String: voucher,
+			Valid:  true,
+		},
 	}
 
 	query := repository.New(conn)
@@ -201,7 +203,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	var promoToken = models.PromoToken{
 		UserName:  jobData.Customer.Name,
 		ExpiresAt: expiryDate,
-		PromoCode: PROMO_CODE,
+		PromoCode: jobData.Voucher,
 	}
 
 	signature, err := service.BuildSignature(promoToken, string(rune(currDate.Unix())))
@@ -211,7 +213,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	}
 
 	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
-	_, err = trackDistributedPromo(signature, jobData.Customer.Name, expiryDate)
+	_, err = trackDistributedPromo(signature, jobData.Customer.Name, jobData.Voucher, expiryDate)
 
 	if err != nil {
 		log.Printf("Error inserting %v", err)

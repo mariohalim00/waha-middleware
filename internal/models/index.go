@@ -32,6 +32,7 @@ type Job struct {
 	Pic      Pic      `json:"pic"`
 	Customer Customer `json:"customer"`
 	Success  bool     `json:"success"`
+	Voucher  string   `json:"voucher"`
 }
 
 type JobResponse struct {
