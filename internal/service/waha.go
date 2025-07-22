@@ -11,6 +11,10 @@ import (
 
 var BASE_URL = os.Getenv("WAHA_URL")
 var WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
+var WAHA_HTTP_HEADER_POST = httpHelper.HttpHeader{
+	"Content-Type": "application/json",
+	"X-Api-Key":    os.Getenv("API_KEY"),
+}
 
 func StartTyping(session, chatId string) error {
 	err := util.ValidateWahaInputParams(session, chatId)
@@ -33,7 +37,7 @@ func StartTyping(session, chatId string) error {
 
 	url := BASE_URL + "/api/startTyping"
 
-	err = httpHelper.Post(payload, url)
+	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 
 	if err != nil {
 		log.Println("Error executing request:", err)
@@ -64,7 +68,7 @@ func StopTyping(session, chatId string) error {
 
 	url := BASE_URL + "/api/stopTyping"
 
-	err = httpHelper.Post(payload, url)
+	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 
 	if err != nil {
 		log.Println("Error executing request:", err)
@@ -99,7 +103,7 @@ func SendMessage(session, chatId, text string) error {
 
 	url := BASE_URL + "/api/sendText"
 
-	err = httpHelper.Post(payload, url)
+	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 
 	if err != nil {
 		log.Println("Error executing request:", err)

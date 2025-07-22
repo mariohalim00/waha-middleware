@@ -7,9 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 )
+
+type HttpHeader map[string]string
 
 // Helper function to check for successful status codes
 func isSuccessfulStatusCode(statusCode int) bool {
@@ -17,7 +18,7 @@ func isSuccessfulStatusCode(statusCode int) bool {
 }
 
 // Post sends a POST request with the provided payload to the specified URL.
-func Post(payload []byte, url string) error {
+func Post(payload []byte, url string, headers HttpHeader) error {
 	// Create HTTP request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
@@ -25,9 +26,10 @@ func Post(payload []byte, url string) error {
 		return err
 	}
 
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Api-Key", os.Getenv("API_KEY"))
+	// Set headers from parameters
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 
 	// HTTP Client with timeout
 	client := &http.Client{
