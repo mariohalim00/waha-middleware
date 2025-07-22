@@ -199,7 +199,15 @@ func trackDistributedPromo(signature, userName, voucher string, expiryDate time.
 
 func generateWebFormUrl(jobData models.Job) (string, error) {
 	currDate := time.Now()
-	expiryDate := currDate.AddDate(0, 0, 7)
+
+	assignedVoucher, err := service.GetVoucherByName(jobData.Voucher)
+	if err != nil {
+		log.Printf("Error retrieving voucher: %v", err)
+		return "", fmt.Errorf("failed to retrieve voucher: %w", err)
+	}
+
+	duration := time.Duration(assignedVoucher.PromoDurationHours) * time.Hour
+	expiryDate := currDate.Add(duration)
 	var promoToken = models.PromoToken{
 		UserName:  jobData.Customer.Name,
 		ExpiresAt: expiryDate,

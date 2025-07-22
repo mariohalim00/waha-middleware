@@ -22,8 +22,9 @@ type PromoTracker struct {
 }
 
 type Voucher struct {
-	ID     int64
-	Type   string
-	Amount float64
-	Name   string
+	ID                 int64
+	Type               string
+	Amount             float64
+	Name               string
+	PromoDurationHours int32
 }
