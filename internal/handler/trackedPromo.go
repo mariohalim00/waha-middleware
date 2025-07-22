@@ -84,3 +84,29 @@ func ClaimTrackedPromo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
+
+func MarkPromoAsProcessed(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpHelper.ReturnHttpError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := context.Background()
+	dbConn := db.New(ctx)
+	defer dbConn.Close(ctx)
+
+	q := repository.New(dbConn)
+	sluggedHash := r.PathValue("hash")
+	log.Println("Marking promo as processed for hash:", sluggedHash)
+	param := repository.UpdatePromoTrackerIsProcessedParams{
+		HashedString: sluggedHash,
+		IsProcessed:  true,
+	}
+	_, err := q.UpdatePromoTrackerIsProcessed(ctx, param)
+	if err != nil {
+		httpHelper.ReturnHttpError(w, "Failed to mark promo as processed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

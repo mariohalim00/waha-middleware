@@ -18,6 +18,7 @@ type PromoTracker struct {
 	UpdatedAt    pgtype.Timestamptz
 	Voucher      pgtype.Text
 	ClaimedAt    pgtype.Timestamptz
+	IsProcessed  bool
 }
 
 type Voucher struct {
