@@ -24,7 +24,7 @@ COPY --from=builder /app/.env .
 COPY --from=builder /app ./projects
 
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
-RUN ./goose -dir ./internal/database/migrations \
+RUN ./goose -dir ./projects/internal/database/migrations \
     postgres "host=localhost user=postgres password=suntzu2025 dbname=waha-middleware sslmode=disable" up || echo "Goose migration skipped or failed (safe for container build)"
 
 # Expose application port
