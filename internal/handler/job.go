@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,14 +8,11 @@ import (
 	"os"
 	"strings"
 	"time"
-	"waha-job-processing/internal/database/db"
-	"waha-job-processing/internal/database/repository"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
 	"waha-job-processing/internal/util"
 	"waha-job-processing/internal/util/httpHelper"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/joho/godotenv"
 )
 
@@ -138,14 +134,14 @@ func processJobBackground(jobList []models.Job) {
 		log.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
 	}
 
-	err = callWebhook(body)
+	err = callWebhookPostJob(body)
 	if err != nil {
 		log.Printf("Error when calling webhook: %+v\n", err)
 	}
 
 }
 
-func callWebhook(body []byte) error {
+func callWebhookPostJob(body []byte) error {
 	var err error
 	MAX_RETRY := 3
 	for i := range MAX_RETRY {
@@ -165,36 +161,6 @@ func callWebhook(body []byte) error {
 	}
 
 	return nil
-}
-
-func trackDistributedPromo(signature, userName, voucher string, expiryDate time.Time) (repository.PromoTracker, error) {
-	ctx := context.Background()
-	conn := db.New(ctx)
-	defer conn.Close(ctx)
-
-	param := repository.CreateTrackedPromoParams{
-		HashedString: signature,
-		ExpiredAt: pgtype.Timestamptz{
-			Time:  expiryDate,
-			Valid: true,
-		},
-		UserName: userName,
-		Voucher: pgtype.Text{
-			String: voucher,
-			Valid:  true,
-		},
-	}
-
-	query := repository.New(conn)
-
-	trackedPromo, err := query.CreateTrackedPromo(ctx, param)
-	if err != nil {
-		log.Printf("Failed to crate tracked promo record")
-		return repository.PromoTracker{}, err
-	}
-
-	log.Printf("Created tracked promo %v\n", trackedPromo)
-	return trackedPromo, nil
 }
 
 func generateWebFormUrl(jobData models.Job) (string, error) {
@@ -221,7 +187,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	}
 
 	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
-	_, err = trackDistributedPromo(signature, jobData.Customer.Name, jobData.Voucher, expiryDate)
+	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Name, jobData.Voucher, expiryDate)
 
 	if err != nil {
 		log.Printf("Error inserting %v", err)
