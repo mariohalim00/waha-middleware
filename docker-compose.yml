@@ -5,20 +5,23 @@ services:
       - db
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5433/postgres
+      API_KEY: $API_KEY
+      WAHA_URL: $WAHA_URL
+      TEXT_BLAST_TEMPLATE: $TEXT_BLAST_TEMPLATE
+      BLASTER_WEBHOOK_URL: $BLASTER_WEBHOOK_URL
+      PORT: $PORT
+      APP_ENV: $APP_ENV
+      DB_HOST: $DB_HOST
+      DB_PORT: $DB_PORT
+      DB_DATABASE: $DB_DATABASE
+      DB_USERNAME: $DB_USERNAME
+      DB_PASSWORD: $DB_PASSWORD
+      DB_SCHEMA: $DB_SCHEMA
+      DB_URL: postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}?schema=${DB_SCHEMA}
+      BASE_WEBFORM_URL: $BASE_WEBFORM_URL
+      PROMO_CODE: $PROMO_CODE   
     ports:
       - "8080:8080"
-    restart: unless-stopped
-
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: waha-midddleware
-    ports:
-      - "5433:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
     restart: unless-stopped
 
 volumes:
