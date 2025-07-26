@@ -12,7 +12,7 @@ COPY . .
 RUN go build -o server ./cmd/server
 
 # Install goose in builder stage
-RUN go install github.com/pressly/goose/v3/cmd/goose@3.24.3
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 FROM golang:1.23-alpine
 
