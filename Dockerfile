@@ -27,6 +27,8 @@ COPY --from=builder /app/.env .
 COPY --from=builder /app ./projects
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
 
+RUN chmod +x ./projects/migration.sh
+
 
 # Expose application port
 EXPOSE 8080
