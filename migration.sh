@@ -8,4 +8,9 @@ if [ -z "$migration_type" ]; then
   exit 1
 fi
 
-goose -dir ./projects/internal/database/migrations postgres "host=${DB_HOST} user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} sslmode=disable" $migration_type
+if [ -z "$DB_HOST" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_DATABASE" ]; then
+  echo "Error: One or more required environment variables (DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE) are not set."
+  exit 1
+fi
+
+goose -dir ./projects/internal/database/migrations postgres "host=${DB_HOST} user=${DB_USERNAME} password=${DB_PASSWORD} dbname=${DB_DATABASE} sslmode=disable" ${migration_type}
