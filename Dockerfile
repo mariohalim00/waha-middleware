@@ -31,8 +31,8 @@ COPY --from=builder /go/bin/goose /usr/local/bin/goose
 # Expose application port
 EXPOSE 8080
 
-## goose already copied from builder, no need to install again and run bindary
-CMD goose -dir ./projects/internal/database/migrations \
-    postgres "host=postgres user=postgres password=suntzu2025 dbname=waha-middleware sslmode=disable" up && ./server"
+# ## goose already copied from builder, no need to install again and run bindary
+# CMD goose -dir ./projects/internal/database/migrations \
+#     postgres "host=postgres user=postgres password=suntzu2025 dbname=waha-middleware sslmode=disable" up && ./server"
 # # Run the binary
-# CMD ["./server"]
+CMD ["./server"]
