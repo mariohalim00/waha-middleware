@@ -1,8 +1,9 @@
 services:
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5433/postgres
       API_KEY: ${API_KEY}
       WAHA_URL: ${WAHA_URL}
       TEXT_BLAST_TEMPLATE: ${TEXT_BLAST_TEMPLATE}
