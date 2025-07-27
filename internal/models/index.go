@@ -38,6 +38,7 @@ type Job struct {
 type JobResponse struct {
 	CustomerNumber string `json:"customerNumber"`
 	Name           string `json:"name"`
+	Voucher        string `json:"voucher"`
 }
 
 type PromoToken struct {

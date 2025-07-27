@@ -82,6 +82,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
+				Voucher:        job.Voucher,
 			})
 			continue
 		}
@@ -94,6 +95,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
+				Voucher:        job.Voucher,
 			})
 			continue
 		}
@@ -106,6 +108,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
+				Voucher:        job.Voucher,
 			})
 			continue
 		}
@@ -117,6 +120,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
+				Voucher:        job.Voucher,
 			})
 			continue
 		}
