@@ -82,7 +82,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
-				Voucher:        job.Voucher,
+				Voucher:        job.Customer.Voucher,
 			})
 			continue
 		}
@@ -95,7 +95,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
-				Voucher:        job.Voucher,
+				Voucher:        job.Customer.Voucher,
 			})
 			continue
 		}
@@ -108,7 +108,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
-				Voucher:        job.Voucher,
+				Voucher:        job.Customer.Voucher,
 			})
 			continue
 		}
@@ -120,7 +120,7 @@ func processJobBackground(jobList []models.Job) {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
-				Voucher:        job.Voucher,
+				Voucher:        job.Customer.Voucher,
 			})
 			continue
 		}
@@ -169,8 +169,9 @@ func callWebhookPostJob(body []byte) error {
 
 func generateWebFormUrl(jobData models.Job) (string, error) {
 	currDate := time.Now()
+	log.Printf("generating job for current voucher: %+v, job: %+v", jobData.Customer.Voucher, jobData)
 
-	assignedVoucher, err := service.GetVoucherByName(jobData.Voucher)
+	assignedVoucher, err := service.GetVoucherByName(jobData.Customer.Voucher)
 	if err != nil {
 		log.Printf("Error retrieving voucher: %v", err)
 		return "", fmt.Errorf("failed to retrieve voucher: %w", err)
@@ -181,7 +182,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	var promoToken = models.PromoToken{
 		UserName:  jobData.Customer.Name,
 		ExpiresAt: expiryDate,
-		PromoCode: jobData.Voucher,
+		PromoCode: jobData.Customer.Voucher,
 	}
 
 	signature, err := service.BuildSignature(promoToken, string(rune(currDate.Unix())))
@@ -191,7 +192,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	}
 
 	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
-	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Name, jobData.Voucher, expiryDate)
+	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Name, jobData.Customer.Voucher, expiryDate)
 
 	if err != nil {
 		log.Printf("Error inserting %v", err)
