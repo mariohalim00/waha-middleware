@@ -112,7 +112,7 @@ func processJobBackground(jobList []models.Job) {
 			})
 			continue
 		}
-		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Name)
+		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Username)
 		msg = strings.ReplaceAll(msg, `\n`, "\n")
 		msg = msg + "\n" + url
 		err = service.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)

@@ -24,6 +24,7 @@ type Pic struct {
 type Customer struct {
 	FormattedPhoneNumber string `json:"formattedPhoneNumber"`
 	Name                 string `json:"name"`
+	Username             string `json:"username"`
 	IsInternal           bool   `json:"isInternal"`
 	Voucher              string `json:"voucher"`
 }
