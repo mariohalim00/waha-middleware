@@ -9,7 +9,7 @@ import (
 	"waha-job-processing/internal/util/httpHelper"
 )
 
-var BASE_URL = os.Getenv("WAHA_URL")
+var WAHA_BASE_URL = os.Getenv("WAHA_URL")
 var WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
 var WAHA_HTTP_HEADER_POST = httpHelper.HttpHeader{
 	"Content-Type": "application/json",
@@ -35,7 +35,7 @@ func StartTyping(session, chatId string) error {
 		return err
 	}
 
-	url := BASE_URL + "/api/startTyping"
+	url := WAHA_BASE_URL + "/api/startTyping"
 
 	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 
@@ -66,7 +66,7 @@ func StopTyping(session, chatId string) error {
 		return err
 	}
 
-	url := BASE_URL + "/api/stopTyping"
+	url := WAHA_BASE_URL + "/api/stopTyping"
 
 	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 
@@ -101,7 +101,7 @@ func SendMessage(session, chatId, text string) error {
 		return err
 	}
 
-	url := BASE_URL + "/api/sendText"
+	url := WAHA_BASE_URL + "/api/sendText"
 
 	err = httpHelper.Post(payload, url, WAHA_HTTP_HEADER_POST)
 

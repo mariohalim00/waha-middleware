@@ -43,8 +43,13 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a unique key for this job batch (could be improved with a real idempotency key)
-	jobKey := fmt.Sprintf("%v", jobList)
+	// Create a unique key for this job batch based on phone numbers and session
+	var phoneNumbers []string
+	for _, job := range jobList {
+		phoneNumbers = append(phoneNumbers, job.Customer.FormattedPhoneNumber)
+	}
+	jobKey := strings.Join(phoneNumbers, ",")
+
 	if jobProcessing[jobKey] {
 		httpHelper.ReturnHttpError(w, "Job is already being processed", http.StatusConflict)
 		return
@@ -56,6 +61,7 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 			if r := recover(); r != nil {
 				log.Printf("Recovered in job processor: %v", r)
 			}
+			// Always clean up the job key when done
 			delete(jobProcessing, jobKey)
 		}()
 		processJobBackground(jobList)

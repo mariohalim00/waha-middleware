@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
 ALTER TABLE "promo_tracker"
 ADD COLUMN "sent_to_tm" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN "process_note" TEXT NULL;

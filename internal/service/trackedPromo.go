@@ -43,6 +43,7 @@ func CreateTrackedPromo(signature, userName, voucher string, expiryDate time.Tim
 func GetTrackedPromo(hash string) (repository.PromoTracker, error) {
 	ctx := context.Background()
 	dbConn := db.New(ctx)
+	defer dbConn.Close(ctx)
 	q := repository.New(dbConn)
 
 	log.Println("Fetching tracked promo for hash:", hash)
@@ -58,6 +59,7 @@ func GetTrackedPromo(hash string) (repository.PromoTracker, error) {
 func ClaimTrackedPromo(hash string) (repository.PromoTracker, error) {
 	ctx := context.Background()
 	dbConn := db.New(ctx)
+	defer dbConn.Close(ctx)
 	q := repository.New(dbConn)
 
 	existingPromo, err := q.GetOneTrackedPromo(ctx, hash)
