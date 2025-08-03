@@ -30,4 +30,6 @@ type Voucher struct {
 	Amount             float64
 	Name               string
 	PromoDurationHours int32
+	TopupDeadline      pgtype.Int4
+	PromoTextTemplate  pgtype.Text
 }

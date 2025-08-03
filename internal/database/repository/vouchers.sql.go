@@ -10,7 +10,7 @@ import (
 )
 
 const getOneVoucher = `-- name: GetOneVoucher :one
-SELECT id, type, amount, name, promo_duration_hours FROM "vouchers"
+SELECT id, type, amount, name, promo_duration_hours, topup_deadline, promo_text_template FROM "vouchers"
 WHERE "name" = $1
 `
 
@@ -23,6 +23,8 @@ func (q *Queries) GetOneVoucher(ctx context.Context, name string) (Voucher, erro
 		&i.Amount,
 		&i.Name,
 		&i.PromoDurationHours,
+		&i.TopupDeadline,
+		&i.PromoTextTemplate,
 	)
 	return i, err
 }
