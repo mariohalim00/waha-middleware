@@ -2,12 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+	"waha-job-processing/internal/database/repository"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
 	"waha-job-processing/internal/util"
@@ -80,15 +80,40 @@ func processJobBackground(jobList []models.Job) {
 	length := len(jobList)
 
 	for idx, job := range jobList {
+		custdata, err := service.GetUserDataByUsername(job.Customer.Username)
+		if err != nil {
+			log.Println("Error fetching user data:", err)
+			failedJobs = append(failedJobs, models.JobResponse{
+				CustomerNumber: job.Customer.FormattedPhoneNumber,
+				Name:           job.Customer.Name,
+				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
+			})
+			continue
+		}
+
+		assignedVoucher, err := service.GetVoucherByName(job.Customer.Voucher)
+		if err != nil {
+			log.Printf("Error retrieving voucher: %v", err)
+			failedJobs = append(failedJobs, models.JobResponse{
+				CustomerNumber: job.Customer.FormattedPhoneNumber,
+				Name:           job.Customer.Name,
+				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
+			})
+			continue
+		}
+
 		//	start typing
 		log.Println("Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session)
-		err := service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
+		err = service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
 		if err != nil {
 			// httpHelper.ReturnHttpError(w, "Error sending typing event", http.StatusConflict)
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
 			})
 			continue
 		}
@@ -102,31 +127,50 @@ func processJobBackground(jobList []models.Job) {
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
 			})
 			continue
 		}
 		time.Sleep(util.GenerateRandomDuration(30))
 
 		//	send message
-		url, err := generateWebFormUrl(job)
+		url, err := generateWebFormUrl(job, assignedVoucher)
 		if err != nil {
 			log.Printf("failed to generate url, skipping")
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
 			})
 			continue
 		}
-		msg := strings.ReplaceAll(TEXT_TEMPLATE, "{{name}}", job.Customer.Username)
+
+		var msg_template string
+		if assignedVoucher.PromoTextTemplate.Valid && assignedVoucher.PromoTextTemplate.String != "" {
+			msg_template = assignedVoucher.PromoTextTemplate.String
+		} else {
+			msg_template = TEXT_TEMPLATE
+		}
+
+		var name string
+		if custdata.Name != "" {
+			name = custdata.Name
+		} else {
+			name = job.Customer.Name
+		}
+
+		msg := strings.ReplaceAll(msg_template, "{{name}}", name)
 		msg = strings.ReplaceAll(msg, `\n`, "\n")
 		msg = msg + "\n" + url
+
 		err = service.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)
 		if err != nil {
 			failedJobs = append(failedJobs, models.JobResponse{
 				CustomerNumber: job.Customer.FormattedPhoneNumber,
 				Name:           job.Customer.Name,
 				Voucher:        job.Customer.Voucher,
+				Username:       job.Customer.Username,
 			})
 			continue
 		}
@@ -173,20 +217,14 @@ func callWebhookPostJob(body []byte) error {
 	return nil
 }
 
-func generateWebFormUrl(jobData models.Job) (string, error) {
+func generateWebFormUrl(jobData models.Job, assignedVoucher *repository.Voucher) (string, error) {
 	currDate := time.Now()
 	log.Printf("generating job for current voucher: %+v, job: %+v", jobData.Customer.Voucher, jobData)
-
-	assignedVoucher, err := service.GetVoucherByName(jobData.Customer.Voucher)
-	if err != nil {
-		log.Printf("Error retrieving voucher: %v", err)
-		return "", fmt.Errorf("failed to retrieve voucher: %w", err)
-	}
 
 	duration := time.Duration(assignedVoucher.PromoDurationHours) * time.Hour
 	expiryDate := currDate.Add(duration)
 	var promoToken = models.PromoToken{
-		UserName:  jobData.Customer.Name,
+		UserName:  jobData.Customer.Username,
 		ExpiresAt: expiryDate,
 		PromoCode: jobData.Customer.Voucher,
 	}
@@ -198,7 +236,7 @@ func generateWebFormUrl(jobData models.Job) (string, error) {
 	}
 
 	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
-	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Name, jobData.Customer.Voucher, expiryDate)
+	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Username, jobData.Customer.Voucher, expiryDate)
 
 	if err != nil {
 		log.Printf("Error inserting %v", err)

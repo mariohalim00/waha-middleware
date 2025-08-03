@@ -59,6 +59,41 @@ func Post(payload []byte, url string, headers HttpHeader) error {
 	return nil
 }
 
+func Get(url string, headers HttpHeader) ([]byte, error) {
+	// Create HTTP request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("Error creating HTTP request: %v", err)
+		return nil, err
+	}
+
+	// Set headers from parameters
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	// HTTP Client with timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 10 seconds timeout
+	}
+
+	// Execute the request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error processing HTTP request: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Check for successful response status code
+	if !isSuccessfulStatusCode(resp.StatusCode) {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP error: %s\nBody: %s", resp.Status, string(body))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
 type HttpError struct {
 	Status     string `json:"status"`
 	StatusCode int    `json:"statusCode"`
