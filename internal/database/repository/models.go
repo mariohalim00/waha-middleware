@@ -19,6 +19,9 @@ type PromoTracker struct {
 	Voucher      pgtype.Text
 	ClaimedAt    pgtype.Timestamptz
 	IsProcessed  bool
+	SentToTm     bool
+	ProcessNote  pgtype.Text
+	UserID       pgtype.Text
 }
 
 type Voucher struct {
