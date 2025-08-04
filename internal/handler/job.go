@@ -134,7 +134,7 @@ func processJobBackground(jobList []models.Job) {
 		time.Sleep(util.GenerateRandomDuration(30))
 
 		//	send message
-		url, err := generateWebFormUrl(job, assignedVoucher)
+		url, err := generateWebFormUrl(job, assignedVoucher, custdata.Userid)
 		if err != nil {
 			log.Printf("failed to generate url, skipping")
 			failedJobs = append(failedJobs, models.JobResponse{
@@ -217,7 +217,7 @@ func callWebhookPostJob(body []byte) error {
 	return nil
 }
 
-func generateWebFormUrl(jobData models.Job, assignedVoucher *repository.Voucher) (string, error) {
+func generateWebFormUrl(jobData models.Job, assignedVoucher *repository.Voucher, userID string) (string, error) {
 	currDate := time.Now()
 	log.Printf("generating job for current voucher: %+v, job: %+v", jobData.Customer.Voucher, jobData)
 
@@ -236,7 +236,7 @@ func generateWebFormUrl(jobData models.Job, assignedVoucher *repository.Voucher)
 	}
 
 	signedUrl := WEBFORM_URL + "/web-form?data=" + signature
-	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Username, jobData.Customer.Voucher, expiryDate)
+	_, err = service.CreateTrackedPromo(signature, jobData.Customer.Username, jobData.Customer.Voucher, expiryDate, userID)
 
 	if err != nil {
 		log.Printf("Error inserting %v", err)

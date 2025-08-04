@@ -12,8 +12,8 @@ import (
 )
 
 const createTrackedPromo = `-- name: CreateTrackedPromo :one
-INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name, voucher) 
-VALUES($1, $2, now(), false, $3, $4)
+INSERT INTO "promo_tracker" (hashed_string, expired_at, created_at, claimed, user_name, voucher, user_id) 
+VALUES($1, $2, now(), false, $3, $4, $5)
 RETURNING id, hashed_string, expired_at, created_at, claimed, user_name, updated_at, voucher, claimed_at, is_processed, sent_to_tm, process_note, user_id
 `
 
@@ -22,6 +22,7 @@ type CreateTrackedPromoParams struct {
 	ExpiredAt    pgtype.Timestamptz
 	UserName     string
 	Voucher      pgtype.Text
+	UserID       pgtype.Text
 }
 
 func (q *Queries) CreateTrackedPromo(ctx context.Context, arg CreateTrackedPromoParams) (PromoTracker, error) {
@@ -30,6 +31,7 @@ func (q *Queries) CreateTrackedPromo(ctx context.Context, arg CreateTrackedPromo
 		arg.ExpiredAt,
 		arg.UserName,
 		arg.Voucher,
+		arg.UserID,
 	)
 	var i PromoTracker
 	err := row.Scan(

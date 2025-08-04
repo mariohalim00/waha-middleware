@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func CreateTrackedPromo(signature, userName, voucher string, expiryDate time.Time) (repository.PromoTracker, error) {
+func CreateTrackedPromo(signature, userName, voucher string, expiryDate time.Time, userID string) (repository.PromoTracker, error) {
 	ctx := context.Background()
 	conn := db.New(ctx)
 	defer conn.Close(ctx)
@@ -25,6 +25,10 @@ func CreateTrackedPromo(signature, userName, voucher string, expiryDate time.Tim
 		UserName: userName,
 		Voucher: pgtype.Text{
 			String: voucher,
+			Valid:  true,
+		},
+		UserID: pgtype.Text{
+			String: userID,
 			Valid:  true,
 		},
 	}
