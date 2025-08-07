@@ -105,7 +105,8 @@ func processJobBackground(jobList []models.Job) {
 		}
 
 		//	start typing
-		log.Println("Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session)
+		startTime := time.Now()
+		log.Println("[PROCESSING JOB - START] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "StartTime:", startTime.Format(time.RFC3339))
 		err = service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
 		if err != nil {
 			// httpHelper.ReturnHttpError(w, "Error sending typing event", http.StatusConflict)
@@ -180,6 +181,9 @@ func processJobBackground(jobList []models.Job) {
 			time.Sleep(util.GenerateRandomDuration(30))
 		}
 		//	return list of failed jobs
+		endTime := time.Now()
+		duration := endTime.Sub(startTime)
+		log.Println("[PROCESSING JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
 	}
 
 	body, err := json.Marshal(failedJobs)
