@@ -117,7 +117,7 @@ func processJobBackground(jobList []models.Job) {
 			})
 			continue
 		}
-		time.Sleep(util.GenerateRandomDuration(30))
+		time.Sleep(util.GenerateRandomDuration(15))
 
 		//	stop typing
 		err = service.StopTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
@@ -131,7 +131,7 @@ func processJobBackground(jobList []models.Job) {
 			})
 			continue
 		}
-		time.Sleep(util.GenerateRandomDuration(30))
+		time.Sleep(util.GenerateRandomDuration(15))
 
 		//	send message
 		url, err := generateWebFormUrl(job, assignedVoucher, custdata.Userid)
