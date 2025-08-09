@@ -5,11 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"waha-job-processing/internal/database/repository"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
+	"waha-job-processing/internal/service/waha"
 	"waha-job-processing/internal/util"
 	"waha-job-processing/internal/util/httpHelper"
 
@@ -19,12 +21,21 @@ import (
 var TEXT_TEMPLATE string
 var PROMO_CODE string
 var WEBFORM_URL string
+var MAX_CONCURRENT_JOBS int
 
 func init() {
 	godotenv.Load()
 	TEXT_TEMPLATE = os.Getenv("TEXT_BLAST_TEMPLATE")
 	PROMO_CODE = os.Getenv("PROMO_CODE")
 	WEBFORM_URL = os.Getenv("BASE_WEBFORM_URL")
+
+	// Set default concurrent jobs to 5, or read from environment
+	MAX_CONCURRENT_JOBS = 5
+	if envConcurrency := os.Getenv("MAX_CONCURRENT_JOBS"); envConcurrency != "" {
+		if parsed, err := strconv.Atoi(envConcurrency); err == nil && parsed > 0 {
+			MAX_CONCURRENT_JOBS = parsed
+		}
+	}
 }
 
 var jobProcessing = make(map[string]bool)
@@ -76,118 +87,42 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func processJobBackground(jobList []models.Job) {
-	var failedJobs []models.JobResponse
-	length := len(jobList)
+	// Configure concurrency - use environment variable or default
+	maxWorkers, err := waha.GetAllActiveSessions()
 
-	for idx, job := range jobList {
-		custdata, err := service.GetUserDataByUsername(job.Customer.Username)
-		if err != nil {
-			log.Println("Error fetching user data:", err)
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
+	if err != nil {
+		maxWorkers = min(len(jobList), MAX_CONCURRENT_JOBS)
+	}
+	log.Printf("Processing %d jobs with %d concurrent workers (workers here is session)", len(jobList), maxWorkers)
 
-		assignedVoucher, err := service.GetVoucherByName(job.Customer.Voucher)
-		if err != nil {
-			log.Printf("Error retrieving voucher: %v", err)
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
+	// Channels for job distribution and result collection
+	jobChan := make(chan models.Job, len(jobList))
+	resultChan := make(chan *models.JobResponse, len(jobList))
 
-		//	start typing
-		startTime := time.Now()
-		log.Println("[PROCESSING JOB - START] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "StartTime:", startTime.Format(time.RFC3339))
-		err = service.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
-		if err != nil {
-			// httpHelper.ReturnHttpError(w, "Error sending typing event", http.StatusConflict)
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
-		time.Sleep(util.GenerateRandomDuration(15))
-
-		//	stop typing
-		err = service.StopTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
-		if err != nil {
-			// httpHelper.ReturnHttpError(w, "Error stopping typing event", http.StatusConflict)
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
-		time.Sleep(util.GenerateRandomDuration(15))
-
-		//	send message
-		url, err := generateWebFormUrl(job, assignedVoucher, custdata.Userid)
-		if err != nil {
-			log.Printf("failed to generate url, skipping")
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
-
-		var msg_template string
-		if assignedVoucher.PromoTextTemplate.Valid && assignedVoucher.PromoTextTemplate.String != "" {
-			msg_template = assignedVoucher.PromoTextTemplate.String
-		} else {
-			msg_template = TEXT_TEMPLATE
-		}
-
-		var name string
-		if custdata.Name != "" {
-			name = custdata.Name
-		} else {
-			name = job.Customer.Name
-		}
-
-		msg := strings.ReplaceAll(msg_template, "{{name}}", name)
-		msg = strings.ReplaceAll(msg, `\n`, "\n")
-		msg = msg + "\n" + url
-
-		err = service.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)
-		if err != nil {
-			failedJobs = append(failedJobs, models.JobResponse{
-				CustomerNumber: job.Customer.FormattedPhoneNumber,
-				Name:           job.Customer.Name,
-				Voucher:        job.Customer.Voucher,
-				Username:       job.Customer.Username,
-			})
-			continue
-		}
-
-		// wait few secs
-		if idx < length-1 {
-			time.Sleep(util.GenerateRandomDuration(30))
-		}
-		//	return list of failed jobs
-		endTime := time.Now()
-		duration := endTime.Sub(startTime)
-		log.Println("[PROCESSING JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
+	// Start worker goroutines
+	for range maxWorkers {
+		go jobWorker(jobChan, resultChan)
 	}
 
-	body, err := json.Marshal(failedJobs)
+	// Send jobs to workers
+	for _, job := range jobList {
+		jobChan <- job
+	}
+	close(jobChan)
 
+	// Collect results
+	var failedJobs []models.JobResponse
+	for range jobList {
+		result := <-resultChan
+		if result != nil {
+			failedJobs = append(failedJobs, *result)
+		}
+	}
+	close(resultChan) // Close the result channel after collecting all results
+
+	log.Printf("Job processing completed. Failed jobs: %d/%d", len(failedJobs), len(jobList))
+
+	body, err := json.Marshal(failedJobs)
 	if err != nil {
 		log.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
 	}
@@ -196,7 +131,100 @@ func processJobBackground(jobList []models.Job) {
 	if err != nil {
 		log.Printf("Error when calling webhook: %+v\n", err)
 	}
+}
 
+// jobWorker processes individual jobs from the job channel
+func jobWorker(jobChan <-chan models.Job, resultChan chan<- *models.JobResponse) {
+	for job := range jobChan {
+		result := processIndividualJob(job)
+		resultChan <- result
+	}
+}
+
+// processIndividualJob handles the processing of a single job
+func processIndividualJob(job models.Job) *models.JobResponse {
+	startTime := time.Now()
+	log.Println("[PROCESSING JOB - START] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "StartTime:", startTime.Format(time.RFC3339))
+
+	// Helper function to create failed job response
+	createFailedResponse := func() *models.JobResponse {
+		return &models.JobResponse{
+			CustomerNumber: job.Customer.FormattedPhoneNumber,
+			Name:           job.Customer.Name,
+			Voucher:        job.Customer.Voucher,
+			Username:       job.Customer.Username,
+		}
+	}
+
+	custdata, err := service.GetUserDataByUsername(job.Customer.Username)
+	if err != nil {
+		log.Println("Error fetching user data:", err)
+		return createFailedResponse()
+	}
+
+	assignedVoucher, err := service.GetVoucherByName(job.Customer.Voucher)
+	if err != nil {
+		log.Printf("Error retrieving voucher: %v", err)
+		return createFailedResponse()
+	}
+
+	// Start typing
+	err = waha.StartTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
+	if err != nil {
+		log.Printf("Error sending typing event: %v", err)
+		return createFailedResponse()
+	}
+	time.Sleep(util.GenerateRandomDuration(15))
+
+	// Stop typing
+	err = waha.StopTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
+	if err != nil {
+		log.Printf("Error stopping typing event: %v", err)
+		return createFailedResponse()
+	}
+	time.Sleep(util.GenerateRandomDuration(15))
+
+	// Generate URL
+	url, err := generateWebFormUrl(job, assignedVoucher, custdata.Userid)
+	if err != nil {
+		log.Printf("failed to generate url, skipping")
+		return createFailedResponse()
+	}
+
+	// Prepare message template
+	var msg_template string
+	if assignedVoucher.PromoTextTemplate.Valid && assignedVoucher.PromoTextTemplate.String != "" {
+		msg_template = assignedVoucher.PromoTextTemplate.String
+	} else {
+		msg_template = TEXT_TEMPLATE
+	}
+
+	var name string
+	if custdata.Name != "" {
+		name = custdata.Name
+	} else {
+		name = job.Customer.Name
+	}
+
+	msg := strings.ReplaceAll(msg_template, "{{name}}", name)
+	msg = strings.ReplaceAll(msg, `\n`, "\n")
+	msg = msg + "\n" + url
+
+	// Send message
+	err = waha.SendMessage(job.Pic.Session, job.Customer.FormattedPhoneNumber, msg)
+	if err != nil {
+		log.Printf("Error sending message: %v", err)
+		return createFailedResponse()
+	}
+
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+	log.Println("[PROCESSING JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
+
+	// Add random delay to avoid overwhelming the service
+	time.Sleep(util.GenerateRandomDuration(10))
+	// Return nil for successful jobs (no failed response needed)
+	return nil
 }
 
 func callWebhookPostJob(body []byte) error {
