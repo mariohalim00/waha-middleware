@@ -1,4 +1,4 @@
-package service
+package waha
 
 import (
 	"encoding/json"
@@ -111,4 +111,30 @@ func SendMessage(session, chatId, text string) error {
 	}
 
 	return nil
+}
+
+func GetAllActiveSessions() (int, error) {
+	url := WAHA_BASE_URL + "/api/sessions"
+	resp, err := httpHelper.Get(url, WAHA_HTTP_HEADER_POST)
+	if err != nil {
+		log.Println("Error fetching active sessions:", err)
+		return -1, err
+	}
+
+	var sessions []WahaSession
+	if err := json.Unmarshal(resp, &sessions); err != nil {
+		log.Println("Error decoding response:", err)
+		return -1, err
+	}
+
+	workingCount := 0
+
+	for _, session := range sessions {
+		if session.Status == StatusWorking {
+			workingCount++
+		}
+	}
+
+	log.Println("Active sessions fetched successfully:", workingCount)
+	return workingCount, nil
 }
