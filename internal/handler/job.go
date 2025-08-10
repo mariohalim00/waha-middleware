@@ -174,7 +174,7 @@ func processIndividualJob(job models.Job) *models.JobResponse {
 		log.Printf("Error sending typing event: %v", err)
 		return createFailedResponse()
 	}
-	time.Sleep(util.GenerateRandomDuration(15))
+	time.Sleep(util.GenerateRandomDuration(15, 30))
 
 	// Stop typing
 	err = waha.StopTyping(job.Pic.Session, job.Customer.FormattedPhoneNumber)
@@ -182,7 +182,7 @@ func processIndividualJob(job models.Job) *models.JobResponse {
 		log.Printf("Error stopping typing event: %v", err)
 		return createFailedResponse()
 	}
-	time.Sleep(util.GenerateRandomDuration(15))
+	time.Sleep(util.GenerateRandomDuration(15, 30))
 
 	// Generate URL
 	url, err := generateWebFormUrl(job, assignedVoucher, custdata.Userid)
@@ -222,7 +222,7 @@ func processIndividualJob(job models.Job) *models.JobResponse {
 	log.Println("[PROCESSING JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
 
 	// Add random delay to avoid overwhelming the service
-	time.Sleep(util.GenerateRandomDuration(10))
+	time.Sleep(util.GenerateRandomDuration(10, 20))
 	// Return nil for successful jobs (no failed response needed)
 	return nil
 }

@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-func GenerateRandomDuration(maxDuration int) time.Duration {
-	num := rand.Intn(maxDuration) + 1
+func GenerateRandomDuration(minDuration, maxDuration int) time.Duration {
+	num := rand.Intn(maxDuration-minDuration+1) + minDuration
 	duration := time.Duration(num) * time.Second
 	return duration
 }
