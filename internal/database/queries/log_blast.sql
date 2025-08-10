@@ -6,7 +6,7 @@ RETURNING *;
 
 -- name: UpdateLogBlast :one
 UPDATE "log_blast"
-SET workflow_start = $2, blast_start = $3, blast_end = $4,
-    actual_blast = $5, success_blast = $6, failed_blast = $7, raw_blast = $8, non_existent_number = $9
+SET  blast_start = $2, blast_end = $3,
+    actual_blast = $4, success_blast = $5, failed_blast = $6
 WHERE id = $1
 RETURNING *;

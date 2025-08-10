@@ -56,35 +56,29 @@ func (q *Queries) CreateLogBlast(ctx context.Context, arg CreateLogBlastParams) 
 
 const updateLogBlast = `-- name: UpdateLogBlast :one
 UPDATE "log_blast"
-SET workflow_start = $2, blast_start = $3, blast_end = $4,
-    actual_blast = $5, success_blast = $6, failed_blast = $7, raw_blast = $8, non_existent_number = $9
+SET  blast_start = $2, blast_end = $3,
+    actual_blast = $4, success_blast = $5, failed_blast = $6
 WHERE id = $1
 RETURNING id, workflow_start, blast_start, blast_end, actual_blast, success_blast, failed_blast, raw_blast, non_existent_number
 `
 
 type UpdateLogBlastParams struct {
-	ID                pgtype.UUID
-	WorkflowStart     pgtype.Timestamptz
-	BlastStart        pgtype.Timestamptz
-	BlastEnd          pgtype.Timestamptz
-	ActualBlast       pgtype.Int4
-	SuccessBlast      pgtype.Int4
-	FailedBlast       pgtype.Int4
-	RawBlast          pgtype.Int4
-	NonExistentNumber pgtype.Int4
+	ID           pgtype.UUID
+	BlastStart   pgtype.Timestamptz
+	BlastEnd     pgtype.Timestamptz
+	ActualBlast  pgtype.Int4
+	SuccessBlast pgtype.Int4
+	FailedBlast  pgtype.Int4
 }
 
 func (q *Queries) UpdateLogBlast(ctx context.Context, arg UpdateLogBlastParams) (LogBlast, error) {
 	row := q.db.QueryRow(ctx, updateLogBlast,
 		arg.ID,
-		arg.WorkflowStart,
 		arg.BlastStart,
 		arg.BlastEnd,
 		arg.ActualBlast,
 		arg.SuccessBlast,
 		arg.FailedBlast,
-		arg.RawBlast,
-		arg.NonExistentNumber,
 	)
 	var i LogBlast
 	err := row.Scan(
