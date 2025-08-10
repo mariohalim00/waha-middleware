@@ -11,10 +11,12 @@ import (
 	"waha-job-processing/internal/database/repository"
 	"waha-job-processing/internal/models"
 	"waha-job-processing/internal/service"
+	logblast "waha-job-processing/internal/service/log-blast"
 	"waha-job-processing/internal/service/waha"
 	"waha-job-processing/internal/util"
 	"waha-job-processing/internal/util/httpHelper"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/joho/godotenv"
 )
 
@@ -46,8 +48,8 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var jobList []models.Job
-	err := json.NewDecoder(r.Body).Decode(&jobList)
+	var jobRequestDto models.JobRequestDto
+	err := json.NewDecoder(r.Body).Decode(&jobRequestDto)
 
 	if err != nil {
 		httpHelper.ReturnHttpError(w, "Invalid JSON", http.StatusBadRequest)
@@ -56,7 +58,7 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create a unique key for this job batch based on phone numbers and session
 	var phoneNumbers []string
-	for _, job := range jobList {
+	for _, job := range jobRequestDto.Job {
 		phoneNumbers = append(phoneNumbers, job.Customer.FormattedPhoneNumber)
 	}
 	jobKey := strings.Join(phoneNumbers, ",")
@@ -75,7 +77,7 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 			// Always clean up the job key when done
 			delete(jobProcessing, jobKey)
 		}()
-		processJobBackground(jobList)
+		processJobBackground(jobRequestDto)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -86,18 +88,20 @@ func ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 }`))
 }
 
-func processJobBackground(jobList []models.Job) {
+func processJobBackground(jobRequestDto models.JobRequestDto) {
 	// Configure concurrency - use environment variable or default
 	maxWorkers, err := waha.GetAllActiveSessions()
 
 	if err != nil {
-		maxWorkers = min(len(jobList), MAX_CONCURRENT_JOBS)
+		maxWorkers = min(len(jobRequestDto.Job), MAX_CONCURRENT_JOBS)
 	}
-	log.Printf("Processing %d jobs with %d concurrent workers (workers here is session)", len(jobList), maxWorkers)
+	log.Printf("[PROCESS JOB] Processing %d jobs with %d concurrent workers (workers here is session)", len(jobRequestDto.Job), maxWorkers)
+
+	startTime := time.Now()
 
 	// Channels for job distribution and result collection
-	jobChan := make(chan models.Job, len(jobList))
-	resultChan := make(chan *models.JobResponse, len(jobList))
+	jobChan := make(chan models.Job, len(jobRequestDto.Job))
+	resultChan := make(chan *models.JobResponse, len(jobRequestDto.Job))
 
 	// Start worker goroutines
 	for range maxWorkers {
@@ -105,14 +109,14 @@ func processJobBackground(jobList []models.Job) {
 	}
 
 	// Send jobs to workers
-	for _, job := range jobList {
+	for _, job := range jobRequestDto.Job {
 		jobChan <- job
 	}
 	close(jobChan)
 
 	// Collect results
 	var failedJobs []models.JobResponse
-	for range jobList {
+	for range jobRequestDto.Job {
 		result := <-resultChan
 		if result != nil {
 			failedJobs = append(failedJobs, *result)
@@ -120,11 +124,49 @@ func processJobBackground(jobList []models.Job) {
 	}
 	close(resultChan) // Close the result channel after collecting all results
 
-	log.Printf("Job processing completed. Failed jobs: %d/%d", len(failedJobs), len(jobList))
+	log.Printf("Job processing completed. Failed jobs: %d/%d", len(failedJobs), len(jobRequestDto.Job))
+	endTime := time.Now()
+	log.Printf("[PROCESS JOB] Job processing duration: %v", endTime.Sub(startTime))
 
 	body, err := json.Marshal(failedJobs)
 	if err != nil {
 		log.Printf("Error converting failedJobs to JSON: %v. FailedJobs content: %+v\n", err, failedJobs)
+	}
+
+	var blastUUID pgtype.UUID
+	err = blastUUID.Scan(jobRequestDto.BlastId)
+	if err != nil {
+		log.Printf("Error parsing BlastId as UUID: %v", err)
+	}
+
+	updateJobDto := repository.UpdateLogBlastParams{
+		ID: blastUUID,
+		BlastStart: pgtype.Timestamptz{
+			Time:  startTime,
+			Valid: true,
+		},
+		BlastEnd: pgtype.Timestamptz{
+			Time:  endTime,
+			Valid: true,
+		},
+		FailedBlast: pgtype.Int4{
+			Int32: int32(len(failedJobs)),
+			Valid: true,
+		},
+		ActualBlast: pgtype.Int4{
+			Int32: int32(len(jobRequestDto.Job)),
+			Valid: true,
+		},
+		SuccessBlast: pgtype.Int4{
+			Int32: int32(len(jobRequestDto.Job) - len(failedJobs)),
+			Valid: true,
+		},
+	}
+
+	_, err = logblast.UpdateLogBlast(updateJobDto)
+
+	if err != nil {
+		log.Printf("Error updating log blast: %+v\n", err)
 	}
 
 	err = callWebhookPostJob(body)
@@ -144,7 +186,7 @@ func jobWorker(jobChan <-chan models.Job, resultChan chan<- *models.JobResponse)
 // processIndividualJob handles the processing of a single job
 func processIndividualJob(job models.Job) *models.JobResponse {
 	startTime := time.Now()
-	log.Println("[PROCESSING JOB - START] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "StartTime:", startTime.Format(time.RFC3339))
+	log.Println("[PROCESSING INDIVIDUAL JOB - START] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "StartTime:", startTime.Format(time.RFC3339))
 
 	// Helper function to create failed job response
 	createFailedResponse := func() *models.JobResponse {
@@ -219,7 +261,7 @@ func processIndividualJob(job models.Job) *models.JobResponse {
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
-	log.Println("[PROCESSING JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
+	log.Println("[PROCESSING INDIVIDUAL JOB - FINISH] Processing job for:", job.Customer.FormattedPhoneNumber, "Session:", job.Pic.Session, "EndTime:", endTime.Format(time.RFC3339), "Duration:", duration)
 
 	// Add random delay to avoid overwhelming the service
 	time.Sleep(util.GenerateRandomDuration(10, 20))
