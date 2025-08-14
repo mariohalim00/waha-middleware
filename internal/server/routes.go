@@ -5,6 +5,7 @@ import (
 	"waha-job-processing/internal/handler"
 	"waha-job-processing/internal/handler/job"
 	logblast "waha-job-processing/internal/handler/log-blast"
+	phonenumbernotexists "waha-job-processing/internal/handler/phone-number-not-exists"
 	trackedpromo "waha-job-processing/internal/handler/tracked-promo"
 	"waha-job-processing/internal/service"
 
@@ -49,12 +50,21 @@ func (s *Server) registerPrivateRoutes(mainHandler *handler.Handler) http.Handle
 		Handler: mainHandler,
 	}
 
+	phoneNumberNotExistHandlers := &phonenumbernotexists.Handler{
+		Handler: mainHandler,
+	}
+
 	mux.HandleFunc("POST /process-job", jobHandler.ProcessJobHandler)
+
 	mux.HandleFunc("GET /tracked-promo/{hash}", trackedPromoHandlers.GetTrackedPromos)
 	mux.HandleFunc("POST /tracked-promo/{hash}/claim", trackedPromoHandlers.ClaimTrackedPromo)
+
 	mux.HandleFunc("POST /log-blast", logBlastHandlers.CreateLogBlast)
 	mux.HandleFunc("PATCH /log-blast", logBlastHandlers.UpdateLogBlast)
+
 	mux.HandleFunc("GET /health", mainHandler.Ping)
+
+	mux.HandleFunc("POST /phone-number-not-exists", phoneNumberNotExistHandlers.CreatePhoneNumberNotExist)
 
 	return s.privateRouteMiddlewareWrapper(mux)
 }
