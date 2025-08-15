@@ -62,7 +62,7 @@ func (h *Handler) ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create a unique key for this job batch based on phone numbers and session
 	var phoneNumbers []string
-	for _, job := range jobRequestDto.Job {
+	for _, job := range jobRequestDto.Jobs {
 		phoneNumbers = append(phoneNumbers, job.Customer.FormattedPhoneNumber)
 	}
 	jobKey := strings.Join(phoneNumbers, ",")
@@ -94,18 +94,21 @@ func (h *Handler) ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	// Configure concurrency - use environment variable or default
+	workerCount := 0
 	sessions, err := waha.GetAllActiveSessions()
-	workerCount := len(sessions)
 	if err != nil || workerCount == 0 {
-		workerCount = min(len(jobRequestDto.Job), MAX_CONCURRENT_JOBS)
+		workerCount = min(len(jobRequestDto.Jobs), MAX_CONCURRENT_JOBS)
+	} else {
+		workerCount = len(sessions)
 	}
-	log.Printf("[PROCESS JOB] Processing %d jobs with %d concurrent workers (workers here is session)", len(jobRequestDto.Job), workerCount)
+
+	log.Printf("[PROCESS JOB] Processing %d jobs with %d concurrent workers (workers here is session)", len(jobRequestDto.Jobs), workerCount)
 
 	startTime := time.Now()
 
 	// Channels for job distribution and result collection
-	jobChan := make(chan models.Job, len(jobRequestDto.Job))
-	resultChan := make(chan *models.JobResponse, len(jobRequestDto.Job))
+	jobChan := make(chan models.Job, len(jobRequestDto.Jobs))
+	resultChan := make(chan *models.JobResponse, len(jobRequestDto.Jobs))
 
 	// Start worker goroutines
 	for i := 0; i < workerCount; i++ {
@@ -113,14 +116,14 @@ func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	}
 
 	// Send jobs to workers
-	for _, job := range jobRequestDto.Job {
+	for _, job := range jobRequestDto.Jobs {
 		jobChan <- job
 	}
 	close(jobChan)
 
 	// Collect results
 	var failedJobs []models.JobResponse
-	for range jobRequestDto.Job {
+	for range jobRequestDto.Jobs {
 		result := <-resultChan
 		if result != nil {
 			failedJobs = append(failedJobs, *result)
@@ -128,7 +131,7 @@ func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	}
 	close(resultChan) // Close the result channel after collecting all results
 
-	log.Printf("Job processing completed. Failed jobs: %d/%d", len(failedJobs), len(jobRequestDto.Job))
+	log.Printf("Job processing completed. Failed jobs: %d/%d", len(failedJobs), len(jobRequestDto.Jobs))
 	endTime := time.Now()
 	log.Printf("[PROCESS JOB] Job processing duration: %v", endTime.Sub(startTime))
 
@@ -158,11 +161,11 @@ func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 			Valid: true,
 		},
 		ActualBlast: pgtype.Int4{
-			Int32: int32(len(jobRequestDto.Job)),
+			Int32: int32(len(jobRequestDto.Jobs)),
 			Valid: true,
 		},
 		SuccessBlast: pgtype.Int4{
-			Int32: int32(len(jobRequestDto.Job) - len(failedJobs)),
+			Int32: int32(len(jobRequestDto.Jobs) - len(failedJobs)),
 			Valid: true,
 		},
 	}
@@ -261,6 +264,13 @@ func (h *Handler) processIndividualJob(job models.Job) *models.JobResponse {
 	if err != nil {
 		log.Printf("Error sending message: %v", err)
 		return createFailedResponse()
+	}
+
+	// Update last blast date
+	err = tmapi.UpdateLastBlastByUsername(job.Customer.Username)
+	if err != nil {
+		log.Printf("Error updating last blast date for user %s: %v", job.Customer.Username, err)
+
 	}
 
 	endTime := time.Now()

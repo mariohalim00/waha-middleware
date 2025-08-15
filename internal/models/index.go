@@ -38,7 +38,7 @@ type Job struct {
 }
 
 type JobRequestDto struct {
-	Job     []Job  `json:"job"`
+	Jobs    []Job  `json:"jobs"`
 	BlastId string `json:"blastId"`
 }
 
