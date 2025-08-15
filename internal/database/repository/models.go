@@ -8,6 +8,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type LogBlast struct {
+	ID                pgtype.UUID
+	WorkflowStart     pgtype.Timestamptz
+	BlastStart        pgtype.Timestamptz
+	BlastEnd          pgtype.Timestamptz
+	ActualBlast       pgtype.Int4
+	SuccessBlast      pgtype.Int4
+	FailedBlast       pgtype.Int4
+	RawBlast          pgtype.Int4
+	NonExistentNumber pgtype.Int4
+}
+
+type PhoneNumberNotExist struct {
+	PhoneNumber string
+	Username    pgtype.Text
+	BlastID     pgtype.UUID
+}
+
 type PromoTracker struct {
 	ID           int64
 	HashedString string

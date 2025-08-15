@@ -37,6 +37,11 @@ type Job struct {
 	Success  bool     `json:"success"`
 }
 
+type JobRequestDto struct {
+	Job     []Job  `json:"job"`
+	BlastId string `json:"blastId"`
+}
+
 type JobResponse struct {
 	CustomerNumber string `json:"customerNumber"`
 	Name           string `json:"name"`

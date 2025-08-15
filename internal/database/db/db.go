@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func New(ctx context.Context) *pgx.Conn {
+func New(ctx context.Context) *pgxpool.Pool {
 
 	var (
 		database = os.Getenv("DB_DATABASE")
@@ -22,7 +22,7 @@ func New(ctx context.Context) *pgx.Conn {
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
 
-	pool, err := pgx.Connect(ctx, connStr)
+	pool, err := pgxpool.New(ctx, connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
