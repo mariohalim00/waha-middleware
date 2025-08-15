@@ -60,6 +60,10 @@ func Post(payload []byte, url string, headers HttpHeader) error {
 }
 
 func Get(url string, headers HttpHeader) ([]byte, error) {
+	// Ensure the URL has a protocol scheme
+	if !(len(url) >= 7 && (url[:7] == "http://" || (len(url) >= 8 && url[:8] == "https://"))) {
+		return nil, fmt.Errorf("URL must include protocol scheme (http:// or https://): %s", url)
+	}
 	// Create HTTP request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

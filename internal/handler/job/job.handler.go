@@ -94,12 +94,12 @@ func (h *Handler) ProcessJobHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	// Configure concurrency - use environment variable or default
-	maxWorkers, err := waha.GetAllActiveSessions()
-
-	if err != nil {
-		maxWorkers = min(len(jobRequestDto.Job), MAX_CONCURRENT_JOBS)
+	sessions, err := waha.GetAllActiveSessions()
+	workerCount := len(sessions)
+	if err != nil || workerCount == 0 {
+		workerCount = min(len(jobRequestDto.Job), MAX_CONCURRENT_JOBS)
 	}
-	log.Printf("[PROCESS JOB] Processing %d jobs with %d concurrent workers (workers here is session)", len(jobRequestDto.Job), maxWorkers)
+	log.Printf("[PROCESS JOB] Processing %d jobs with %d concurrent workers (workers here is session)", len(jobRequestDto.Job), workerCount)
 
 	startTime := time.Now()
 
@@ -108,7 +108,7 @@ func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	resultChan := make(chan *models.JobResponse, len(jobRequestDto.Job))
 
 	// Start worker goroutines
-	for range maxWorkers {
+	for i := 0; i < workerCount; i++ {
 		go h.jobWorker(jobChan, resultChan)
 	}
 
@@ -321,4 +321,66 @@ func (h *Handler) generateWebFormUrl(jobData models.Job, assignedVoucher *reposi
 	}
 
 	return signedUrl, nil
+}
+
+func (h *Handler) PreprocessJobs1(w http.ResponseWriter, r *http.Request) {
+
+	// [WIP]
+	// get customers
+	// 	var customers []models.Customer
+	// 	err := json.NewDecoder(r.Body).Decode(&customers)
+	// 	if err != nil {
+	// 		httpHelper.ReturnHttpError(w, "Invalid JSON", http.StatusBadRequest)
+	// 		return
+	// 	}
+
+	// 	//get sessions
+	// 	activeSessions, err := waha.GetAllActiveSessions()
+	// 	if err != nil {
+	// 		log.Printf("Error fetching active sessions: %v", err)
+	// 		w.WriteHeader(http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	// create blast session
+	// 	logBlast, err := h.LogBlastService.CreateLogBlast(repository.CreateLogBlastParams{
+	// 		BlastStart: time.Now(),
+	// 	})
+	// 	if err != nil {
+	// 		log.Printf("Error creating log blast: %v", err)
+	// 		w.WriteHeader(http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	// get customer that exists
+	// 	filteredCustomers = h.checkPhoneNumbersExists(activeSessions, customers, "")
+
+	// 	w.WriteHeader(http.StatusOK)
+	// 	w.Write([]byte("Preprocessing jobs..."))
+	// }
+
+	// func (h *Handler) checkPhoneNumbersExists(sessions []waha.WahaSession, customers []models.Customer, blastId string) []models.Customer {
+	// 	if len(sessions) == 0 || len(customers) == 0 {
+	// 		return nil
+	// 	}
+
+	// filteredCustomers := make([]models.Customer, 0, len(customers))
+	//
+	//	for idx, customer := range customers {
+	//		session := sessions[idx%len(sessions)]
+	//		exist, err := waha.CheckPhoneNumberExists(session, customer)
+	//		if err != nil {
+	//			log.Printf("Error checking phone number existence for %s: %v", customer.FormattedPhoneNumber, err)
+	//			continue
+	//		}
+	//		if exist {
+	//			filteredCustomers = append(filteredCustomers, customer)
+	//		} else {
+	//			if _, err := h.PhoneNumberNotExistService.CreatePhoneNumberNotExist(customer.FormattedPhoneNumber, customer.Username, blastId); err != nil {
+	//				log.Printf("Error creating phone number not exist entry for %s: %v", customer.FormattedPhoneNumber, err)
+	//			}
+	//		}
+	//	}
+	//
+	// return filteredCustomers
 }

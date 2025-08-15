@@ -65,10 +65,10 @@ func main() {
 }
 
 // TODO: implement log blast, phone number not exist, and other features
-// - log blast: track the status of each blast job
-// - log blast created when starting the parent job, until all child jobs are finished, it should be updated again
+// - log blast: track the status of each blast job [OK]
+// - log blast created when starting the parent job, until all child jobs are finished, it should be updated again [OK]
 
-// - phone number not exist: handle cases where the phone number is not found
+// - phone number not exist: handle cases where the phone number is not found [OK]
 // - other features: implement any additional features as needed
 
-// note: n8n getting more complex. consider moving the preprocessing logic here
+// note: n8n getting more complex. consider moving the preprocessing logic here [WIP]

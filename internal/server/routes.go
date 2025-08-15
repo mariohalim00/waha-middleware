@@ -62,7 +62,7 @@ func (s *Server) registerPrivateRoutes(mainHandler *handler.Handler) http.Handle
 	mux.HandleFunc("POST /log-blast", logBlastHandlers.CreateLogBlast)
 	mux.HandleFunc("PATCH /log-blast", logBlastHandlers.UpdateLogBlast)
 
-	mux.HandleFunc("GET /health", mainHandler.Ping)
+	// mux.HandleFunc("GET /health", job.PreprocessJobs1)
 
 	mux.HandleFunc("POST /phone-number-not-exists", phoneNumberNotExistHandlers.CreatePhoneNumberNotExist)
 
