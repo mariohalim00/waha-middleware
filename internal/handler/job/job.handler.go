@@ -96,7 +96,7 @@ func (h *Handler) processJobBackground(jobRequestDto models.JobRequestDto) {
 	// Configure concurrency - use environment variable or default
 	workerCount := 0
 	sessions, err := waha.GetAllActiveSessions()
-	if err != nil || workerCount == 0 {
+	if err != nil {
 		workerCount = min(len(jobRequestDto.Jobs), MAX_CONCURRENT_JOBS)
 	} else {
 		workerCount = len(sessions)
