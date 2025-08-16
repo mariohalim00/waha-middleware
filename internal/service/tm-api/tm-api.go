@@ -12,7 +12,7 @@ var TM_API_BASE_URL = os.Getenv("TM_API_URL")
 
 func UpdateLastBlastByUsername(userName string) error {
 	url := TM_API_BASE_URL + "/api/custdata/update-last-blast-date/" + userName
-	err := httpHelper.Post([]byte{}, url, httpHelper.HttpHeader{})
+	err := httpHelper.Patch([]byte{}, url, httpHelper.HttpHeader{})
 
 	if err != nil {
 		log.Println("Error executing request:", err)

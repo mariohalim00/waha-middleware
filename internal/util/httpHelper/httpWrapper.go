@@ -59,6 +59,41 @@ func Post(payload []byte, url string, headers HttpHeader) error {
 	return nil
 }
 
+func Patch(payload []byte, url string, headers HttpHeader) error {
+	// Create HTTP request
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Printf("Error creating HTTP request: %v", err)
+		return err
+	}
+
+	// Set headers from parameters
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	// HTTP Client with timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 10 seconds timeout
+	}
+
+	// Execute the request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error processing HTTP request: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Check for successful response status code
+	if !isSuccessfulStatusCode(resp.StatusCode) {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP error: %s\nBody: %s", resp.Status, string(body))
+	}
+
+	return nil
+}
+
 func Get(url string, headers HttpHeader) ([]byte, error) {
 	// Ensure the URL has a protocol scheme
 	if !(len(url) >= 7 && (url[:7] == "http://" || (len(url) >= 8 && url[:8] == "https://"))) {
